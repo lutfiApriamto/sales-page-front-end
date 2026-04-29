@@ -1,6 +1,6 @@
 const ContentLayout = ({ title, description, action, children }) => {
     return (
-        <div className="space-y-6 bg-white shadow p-4 rounded-md min-h-screen">
+        <div className="space-y-6 bg-white shadow p-4 rounded-md min-h-screen overflow-x-auto">
             {/* Page Header */}
             {(title || action) && (
                 <div className="flex items-start justify-between gap-4">
