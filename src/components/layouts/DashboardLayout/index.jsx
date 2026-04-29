@@ -4,21 +4,27 @@ import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 
 const breadcrumbMap = {
-    '/dashboard': [{ label: 'Dashboard' }],
-    '/generate':  [{ label: 'Dashboard', to: '/dashboard' }, { label: 'Buat Sales Page' }],
+    '/dashboard': [
+        { label: 'Dashboard' }
+    ],
+    '/generate': [
+        { label: 'Dashboard', to: '/dashboard' },
+        { label: 'Buat Sales Page' }
+    ],
 };
 
 const DashboardLayout = () => {
     const { collapsed, mobileOpen, toggleCollapsed, toggleMobile, closeMobile } = useSidebar();
     const location = useLocation();
 
-    const breadcrumbs = breadcrumbMap[location.pathname] ?? [{ label: 'Dashboard', to: '/dashboard' }];
+    // Breadcrumb dinamis
+    let breadcrumbs = breadcrumbMap[location.pathname] ?? [{ label: 'Dashboard', to: '/dashboard' }];
 
     if (location.pathname.startsWith('/sales-page/')) {
-        breadcrumbs.push(
+        breadcrumbs = [
             { label: 'Dashboard', to: '/dashboard' },
-            { label: 'Detail Sales Page' }
-        );
+            { label: 'Detail Sales Page' },
+        ];
     }
 
     return (
