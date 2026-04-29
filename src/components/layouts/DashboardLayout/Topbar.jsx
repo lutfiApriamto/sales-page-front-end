@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, LogOut, User, ChevronDown, Mail, Calendar, Shield } from 'lucide-react';
+import { Menu, LogOut, User, ChevronDown, Mail, Calendar, Shield, Zap, Loader2 } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -25,7 +25,36 @@ import toast from 'react-hot-toast';
 const Topbar = ({ toggleMobile, breadcrumbs = [] }) => {
     const { user, logout } = useAuthStore();
     const navigate = useNavigate();
+    
+    // States untuk Dialog & Data
     const [profileOpen, setProfileOpen] = useState(false);
+    const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+    const [profileData, setProfileData] = useState(null);
+
+    // Fungsi Fetch Profile
+    useEffect(() => {
+        const fetchProfileData = async () => {
+            if (profileOpen) {
+                setIsLoadingProfile(true);
+                try {
+                    // Hit ke endpoint /profile yang udah lu buat di Laravel
+                    const res = await axiosService.get('/profile');
+                    if (res.data?.status === 'success') {
+                        setProfileData(res.data.data);
+                    }
+                } catch (error) {
+                    toast.error('Gagal mengambil data profil terbaru.');
+                } finally {
+                    setIsLoadingProfile(false);
+                }
+            } else {
+                // Reset data saat modal ditutup agar efek loading tetap muncul saat dibuka lagi
+                setTimeout(() => setProfileData(null), 200); 
+            }
+        };
+
+        fetchProfileData();
+    }, [profileOpen]);
 
     const handleLogout = async () => {
         try {
@@ -38,13 +67,15 @@ const Topbar = ({ toggleMobile, breadcrumbs = [] }) => {
         }
     };
 
-    const initials = user?.name
-        ? user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+    // Gunakan profileData jika ada, jika tidak fallback ke user context (Zustand)
+    const displayUser = profileData || user;
+
+    const initials = displayUser?.name
+        ? displayUser.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
         : 'U';
 
-    // Format tanggal join jika ada
-    const joinDate = user?.created_at
-        ? new Date(user.created_at).toLocaleDateString('id-ID', {
+    const joinDate = displayUser?.created_at
+        ? new Date(displayUser.created_at).toLocaleDateString('id-ID', {
             day: 'numeric', month: 'long', year: 'numeric'
           })
         : null;
@@ -60,100 +91,109 @@ const Topbar = ({ toggleMobile, breadcrumbs = [] }) => {
                         </DialogTitle>
                     </DialogHeader>
 
-                    <div className="space-y-5">
-                        {/* Avatar & Name */}
-                        <div className="flex flex-col items-center text-center pt-2">
-                            <Avatar className="w-16 h-16 mb-3">
-                                <AvatarFallback className="bg-indigo-600 text-white text-xl font-bold">
-                                    {initials}
-                                </AvatarFallback>
-                            </Avatar>
-                            <h3 className="text-lg font-extrabold text-slate-900 tracking-tight">
-                                {user?.name ?? '-'}
-                            </h3>
-                            <Badge
-                                variant="secondary"
-                                className="mt-1.5 bg-indigo-50 text-indigo-700 border-indigo-100 text-xs font-semibold"
-                            >
-                                <Shield className="w-3 h-3 mr-1" />
-                                Member Aktif
-                            </Badge>
+                    {isLoadingProfile && !profileData ? (
+                        <div className="flex flex-col items-center justify-center py-12">
+                            <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-3" />
+                            <p className="text-sm font-medium text-slate-500">Mengambil data...</p>
                         </div>
-
-                        {/* Divider */}
-                        <div className="h-px bg-slate-100" />
-
-                        {/* Info List */}
-                        <div className="space-y-3">
-                            <div className="flex items-center gap-3 px-1">
-                                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                                    <Mail className="w-4 h-4 text-slate-500" />
-                                </div>
-                                <div className="min-w-0">
-                                    <p className="text-xs text-slate-400 mb-0.5">Alamat Email</p>
-                                    <p className="text-sm font-semibold text-slate-900 truncate">
-                                        {user?.email ?? '-'}
-                                    </p>
-                                </div>
+                    ) : (
+                        <div className="space-y-5 animate-in fade-in zoom-in-95 duration-200">
+                            {/* Avatar & Name */}
+                            <div className="flex flex-col items-center text-center pt-2">
+                                <Avatar className="w-16 h-16 mb-3 ring-4 ring-slate-50">
+                                    <AvatarFallback className="bg-indigo-600 text-white text-xl font-bold">
+                                        {initials}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <h3 className="text-lg font-extrabold text-slate-900 tracking-tight">
+                                    {displayUser?.name ?? '-'}
+                                </h3>
+                                <Badge
+                                    variant="secondary"
+                                    className="mt-1.5 bg-slate-100 text-slate-600 border-slate-200 text-xs font-semibold"
+                                >
+                                    <Shield className="w-3 h-3 mr-1" />
+                                    Member Aktif
+                                </Badge>
                             </div>
 
-                            <div className="flex items-center gap-3 px-1">
-                                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                                    <User className="w-4 h-4 text-slate-500" />
-                                </div>
-                                <div>
-                                    <p className="text-xs text-slate-400 mb-0.5">Nama Lengkap</p>
-                                    <p className="text-sm font-semibold text-slate-900">
-                                        {user?.name ?? '-'}
-                                    </p>
-                                </div>
-                            </div>
-
-                            {joinDate && (
-                                <div className="flex items-center gap-3 px-1">
-                                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                                        <Calendar className="w-4 h-4 text-slate-500" />
+                            <div className="bg-linier-to-br from-indigo-50 to-violet-50 border border-indigo-100 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+                                <div className="flex items-center gap-4">
+                                    <div className="bg-indigo-600 text-white p-2.5 rounded-xl shadow-md shadow-indigo-200">
+                                        <Zap className="w-5 h-5" />
                                     </div>
                                     <div>
-                                        <p className="text-xs text-slate-400 mb-0.5">Bergabung Sejak</p>
-                                        <p className="text-sm font-semibold text-slate-900">
-                                            {joinDate}
+                                        <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mb-0.5">Sisa AI Credits</p>
+                                        <p className="text-3xl font-black text-slate-900 leading-none">
+                                            {displayUser?.credits ?? 0}
                                         </p>
                                     </div>
                                 </div>
-                            )}
-                        </div>
+                                <Badge className="bg-white text-indigo-700 hover:bg-white border-indigo-200 shadow-sm pointer-events-none">
+                                    Kuota API
+                                </Badge>
+                            </div>
 
-                        {/* Divider */}
-                        <div className="h-px bg-slate-100" />
+                            {/* Info List */}
+                            <div className="space-y-3 px-1">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                                        <Mail className="w-4 h-4 text-slate-500" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-0.5">Alamat Email</p>
+                                        <p className="text-sm font-semibold text-slate-900 truncate">
+                                            {displayUser?.email ?? '-'}
+                                        </p>
+                                    </div>
+                                </div>
 
-                        {/* Actions */}
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                className="flex-1 text-sm"
-                                onClick={() => setProfileOpen(false)}
-                            >
-                                Tutup
-                            </Button>
-                            <Button
-                                variant="outline"
-                                className="flex-1 text-sm text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
-                                onClick={() => {
-                                    setProfileOpen(false);
-                                    handleLogout();
-                                }}
-                            >
-                                <LogOut className="w-4 h-4 mr-1.5" />
-                                Logout
-                            </Button>
+                                {joinDate && (
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                                            <Calendar className="w-4 h-4 text-slate-500" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-0.5">Bergabung Sejak</p>
+                                            <p className="text-sm font-semibold text-slate-900">
+                                                {joinDate}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Divider */}
+                            <div className="h-px bg-slate-100" />
+
+                            {/* Actions */}
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    className="flex-1 text-sm font-bold text-slate-600"
+                                    onClick={() => setProfileOpen(false)}
+                                >
+                                    Tutup
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    className="flex-1 text-sm font-bold text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                                    onClick={() => {
+                                        setProfileOpen(false);
+                                        handleLogout();
+                                    }}
+                                >
+                                    <LogOut className="w-4 h-4 mr-1.5" />
+                                    Logout
+                                </Button>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </DialogContent>
             </Dialog>
 
-            {/* Topbar */}
-            <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-4 lg:px-6 shrink-0">
+            {/* Topbar Main Header */}
+            <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-4 lg:px-6 shrink-0 z-10">
                 {/* LEFT */}
                 <div className="flex items-center gap-3">
                     <button
@@ -219,16 +259,16 @@ const Topbar = ({ toggleMobile, breadcrumbs = [] }) => {
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                            className="text-slate-600 cursor-pointer"
+                            className="text-slate-600 cursor-pointer font-medium"
                             onClick={() => setProfileOpen(true)}
                         >
                             <User className="w-4 h-4 mr-2" />
-                            Profile
+                            Profile & Kuota
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                             onClick={handleLogout}
-                            className="text-red-600 cursor-pointer focus:text-red-600 focus:bg-red-50"
+                            className="text-red-600 cursor-pointer focus:text-red-600 focus:bg-red-50 font-medium"
                         >
                             <LogOut className="w-4 h-4 mr-2" />
                             Logout

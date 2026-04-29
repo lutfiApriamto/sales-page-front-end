@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, Plus, X, Loader2 } from 'lucide-react';
+import { Sparkles, Plus, X, Loader2, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ContentLayout } from '../../../../components/layouts';
 import { FieldHint } from '../../../../components';
 import { generateSalesPage } from '../api';
+import { axiosService } from '@/utils/axiosConst';
+import { useAuthStore } from '../../Login/store';
 import toast from 'react-hot-toast';
 
 const hints = {
@@ -18,7 +20,12 @@ const hints = {
 
 const GeneratePage = () => {
     const navigate = useNavigate();
+    const { user, setAuth } = useAuthStore();
+    
+    const [isCheckingCredit, setIsCheckingCredit] = useState(true);
+    const [hasEnoughCredit, setHasEnoughCredit] = useState(true);
     const [loading, setLoading] = useState(false);
+    const [featureInput, setFeatureInput] = useState('');
     const [formData, setFormData] = useState({
         product_name: '',
         description: '',
@@ -27,7 +34,30 @@ const GeneratePage = () => {
         price: '',
         unique_selling_points: '',
     });
-    const [featureInput, setFeatureInput] = useState('');
+
+    useEffect(() => {
+        const checkUserCredit = async () => {
+            try {
+                const res = await axiosService.get('/profile');
+                if (res.data?.status === 'success') {
+                    const latestUser = res.data.data;
+                    
+                    const currentToken = localStorage.getItem('auth_token');
+                    setAuth(latestUser, currentToken); 
+
+                    if (latestUser.credits <= 0) {
+                        setHasEnoughCredit(false);
+                    }
+                }
+            } catch (error) {
+                console.error("Gagal sinkronisasi credit", error);
+            } finally {
+                setIsCheckingCredit(false);
+            }
+        };
+
+        checkUserCredit();
+    }, [setAuth]);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -72,6 +102,13 @@ const GeneratePage = () => {
         const toastId = toast.loading('AI sedang meracik sales page Anda... Mohon tunggu.');
         try {
             const res = await generateSalesPage(formData);
+            
+            if (res.sisa_credit !== undefined) {
+                const updatedUser = { ...user, credits: res.sisa_credit };
+                const currentToken = localStorage.getItem('auth_token');
+                setAuth(updatedUser, currentToken);
+            }
+
             toast.dismiss(toastId);
             toast.success('Sales page berhasil di-generate!');
             navigate(`/sales-page/${res.data.id}`);
@@ -85,7 +122,6 @@ const GeneratePage = () => {
 
     const inputClass = "w-full px-3.5 py-2.5 border-2 border-slate-200 rounded-xl text-sm text-slate-900 bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none transition-all placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400";
 
-    // Helper label dengan hint
     const Label = ({ htmlFor, required, children, hintKey }) => (
         <div className="flex items-center gap-1.5 mb-1.5">
             <label htmlFor={htmlFor} className="text-xs font-semibold text-slate-700">
@@ -96,6 +132,44 @@ const GeneratePage = () => {
         </div>
     );
 
+    // Tampilan saat mengecek credit API
+    if (isCheckingCredit) {
+        return (
+            <ContentLayout title="Buat Sales Page Baru" description="Menyiapkan AI workspace Anda...">
+                <div className="flex flex-col items-center justify-center h-64">
+                    <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-4" />
+                    <p className="text-sm text-slate-500 font-medium">Memeriksa sisa kuota API...</p>
+                </div>
+            </ContentLayout>
+        );
+    }
+
+    // Tampilan saat Credit Habis (Digembok)
+    if (!hasEnoughCredit) {
+        return (
+            <ContentLayout 
+                title="Akses Ditangguhkan" 
+                description="Batas limit penggunaan AI Generator."
+            >
+                <div className="max-w-2xl mx-auto mt-10 bg-white rounded-3xl border border-slate-200 shadow-sm p-10 text-center animate-in zoom-in-95 duration-300">
+                    <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <Lock className="w-10 h-10 text-red-500" />
+                    </div>
+                    <h2 className="text-2xl font-black text-slate-900 mb-3 tracking-tight">AI Credits Habis</h2>
+                    <p className="text-slate-500 text-sm leading-relaxed mb-8 max-w-md mx-auto">
+                        Anda telah menggunakan seluruh batas <strong className="text-slate-700">35 credit demo</strong> yang diberikan. Karena ini adalah versi purwarupa (prototype), silakan hubungi administrator jika Anda memerlukan tambahan kuota untuk pengujian lebih lanjut.
+                    </p>
+                    <div className="flex items-center justify-center gap-3">
+                        <Button onClick={() => navigate('/dashboard')} variant="outline" className="font-bold border-slate-300 text-slate-700 px-8">
+                            Kembali ke Dashboard
+                        </Button>
+                    </div>
+                </div>
+            </ContentLayout>
+        );
+    }
+
+    // Tampilan Form Normal (Jika Credit > 0)
     return (
         <ContentLayout
             title="Buat Sales Page Baru"
@@ -103,10 +177,8 @@ const GeneratePage = () => {
         >
             <form onSubmit={handleSubmit}>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
                     {/* LEFT */}
                     <div className="lg:col-span-2 space-y-5">
-
                         {/* Card 1 — Informasi Dasar */}
                         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-5">
                             <div>
@@ -115,56 +187,19 @@ const GeneratePage = () => {
                             </div>
 
                             <div>
-                                <Label htmlFor="product_name" required hintKey="product_name">
-                                    Nama Produk / Layanan
-                                </Label>
-                                <input
-                                    id="product_name"
-                                    name="product_name"
-                                    type="text"
-                                    placeholder="cth: SalesGen AI — Generator Sales Page Otomatis"
-                                    required
-                                    disabled={loading}
-                                    value={formData.product_name}
-                                    onChange={handleChange}
-                                    className={inputClass}
-                                />
+                                <Label htmlFor="product_name" required hintKey="product_name">Nama Produk / Layanan</Label>
+                                <input id="product_name" name="product_name" type="text" placeholder="cth: SalesGen AI — Generator Sales Page Otomatis" required disabled={loading} value={formData.product_name} onChange={handleChange} className={inputClass} />
                             </div>
 
                             <div>
-                                <Label htmlFor="description" required hintKey="description">
-                                    Deskripsi Produk
-                                </Label>
-                                <textarea
-                                    id="description"
-                                    name="description"
-                                    rows={4}
-                                    placeholder="Jelaskan produk Anda secara detail — apa yang dilakukan, masalah apa yang diselesaikan, dan mengapa pelanggan membutuhkannya..."
-                                    required
-                                    disabled={loading}
-                                    value={formData.description}
-                                    onChange={handleChange}
-                                    className={`${inputClass} resize-none`}
-                                />
-                                <p className="text-xs text-slate-400 mt-1">
-                                    Semakin detail deskripsi, semakin baik hasil AI.
-                                </p>
+                                <Label htmlFor="description" required hintKey="description">Deskripsi Produk</Label>
+                                <textarea id="description" name="description" rows={4} placeholder="Jelaskan produk Anda secara detail — apa yang dilakukan, masalah apa yang diselesaikan..." required disabled={loading} value={formData.description} onChange={handleChange} className={`${inputClass} resize-none`} />
+                                <p className="text-xs text-slate-400 mt-1">Semakin detail deskripsi, semakin baik hasil AI.</p>
                             </div>
 
                             <div>
-                                <Label htmlFor="target_audience" hintKey="target_audience">
-                                    Target Audiens
-                                </Label>
-                                <input
-                                    id="target_audience"
-                                    name="target_audience"
-                                    type="text"
-                                    placeholder="cth: Pengusaha UMKM, Freelancer, Startup B2B"
-                                    disabled={loading}
-                                    value={formData.target_audience}
-                                    onChange={handleChange}
-                                    className={inputClass}
-                                />
+                                <Label htmlFor="target_audience" hintKey="target_audience">Target Audiens</Label>
+                                <input id="target_audience" name="target_audience" type="text" placeholder="cth: Pengusaha UMKM, Freelancer, Startup B2B" disabled={loading} value={formData.target_audience} onChange={handleChange} className={inputClass} />
                             </div>
                         </div>
 
@@ -179,22 +214,8 @@ const GeneratePage = () => {
                             </div>
 
                             <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    placeholder="cth: Generate otomatis dengan AI"
-                                    disabled={loading}
-                                    value={featureInput}
-                                    onChange={(e) => setFeatureInput(e.target.value)}
-                                    onKeyDown={handleFeatureKeyDown}
-                                    className={`${inputClass} flex-1`}
-                                />
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={addFeature}
-                                    disabled={loading || !featureInput.trim()}
-                                    className="shrink-0 gap-1.5"
-                                >
+                                <input type="text" placeholder="cth: Generate otomatis dengan AI" disabled={loading} value={featureInput} onChange={(e) => setFeatureInput(e.target.value)} onKeyDown={handleFeatureKeyDown} className={`${inputClass} flex-1`} />
+                                <Button type="button" variant="outline" onClick={addFeature} disabled={loading || !featureInput.trim()} className="shrink-0 gap-1.5">
                                     <Plus className="w-4 h-4" />
                                     Tambah
                                 </Button>
@@ -203,33 +224,22 @@ const GeneratePage = () => {
                             {formData.features.length > 0 ? (
                                 <div className="flex flex-wrap gap-2">
                                     {formData.features.map((feature, i) => (
-                                        <span
-                                            key={i}
-                                            className="inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-700 text-xs font-medium px-3 py-1.5 rounded-full border border-indigo-100"
-                                        >
+                                        <span key={i} className="inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-700 text-xs font-medium px-3 py-1.5 rounded-full border border-indigo-100">
                                             {feature}
-                                            <button
-                                                type="button"
-                                                onClick={() => removeFeature(i)}
-                                                disabled={loading}
-                                                className="hover:text-indigo-900 transition-colors"
-                                            >
+                                            <button type="button" onClick={() => removeFeature(i)} disabled={loading} className="hover:text-indigo-900 transition-colors">
                                                 <X className="w-3 h-3" />
                                             </button>
                                         </span>
                                     ))}
                                 </div>
                             ) : (
-                                <p className="text-xs text-slate-400 italic">
-                                    Belum ada fitur yang ditambahkan.
-                                </p>
+                                <p className="text-xs text-slate-400 italic">Belum ada fitur yang ditambahkan.</p>
                             )}
                         </div>
                     </div>
 
                     {/* RIGHT */}
                     <div className="space-y-5">
-
                         {/* Card 3 — Harga & USP */}
                         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-5">
                             <div>
@@ -238,35 +248,13 @@ const GeneratePage = () => {
                             </div>
 
                             <div>
-                                <Label htmlFor="price" hintKey="price">
-                                    Harga
-                                </Label>
-                                <input
-                                    id="price"
-                                    name="price"
-                                    type="text"
-                                    placeholder="cth: Rp 299.000 / bulan"
-                                    disabled={loading}
-                                    value={formData.price}
-                                    onChange={handleChange}
-                                    className={inputClass}
-                                />
+                                <Label htmlFor="price" hintKey="price">Harga</Label>
+                                <input id="price" name="price" type="text" placeholder="cth: Rp 299.000 / bulan" disabled={loading} value={formData.price} onChange={handleChange} className={inputClass} />
                             </div>
 
                             <div>
-                                <Label htmlFor="unique_selling_points" hintKey="unique_selling_points">
-                                    Unique Selling Points
-                                </Label>
-                                <textarea
-                                    id="unique_selling_points"
-                                    name="unique_selling_points"
-                                    rows={4}
-                                    placeholder="Apa yang membuat produk Anda berbeda dari kompetitor?..."
-                                    disabled={loading}
-                                    value={formData.unique_selling_points}
-                                    onChange={handleChange}
-                                    className={`${inputClass} resize-none`}
-                                />
+                                <Label htmlFor="unique_selling_points" hintKey="unique_selling_points">Unique Selling Points</Label>
+                                <textarea id="unique_selling_points" name="unique_selling_points" rows={4} placeholder="Apa yang membuat produk Anda berbeda dari kompetitor?..." disabled={loading} value={formData.unique_selling_points} onChange={handleChange} className={`${inputClass} resize-none`} />
                             </div>
                         </div>
 
@@ -279,11 +267,7 @@ const GeneratePage = () => {
                                 </p>
                             </div>
 
-                            <Button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 gap-2"
-                            >
+                            <Button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 gap-2">
                                 {loading ? (
                                     <>
                                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -297,13 +281,7 @@ const GeneratePage = () => {
                                 )}
                             </Button>
 
-                            <Button
-                                type="button"
-                                variant="outline"
-                                disabled={loading}
-                                onClick={() => navigate('/dashboard')}
-                                className="w-full text-slate-600"
-                            >
+                            <Button type="button" variant="outline" disabled={loading} onClick={() => navigate('/dashboard')} className="w-full text-slate-600 font-bold border-slate-300">
                                 Batal
                             </Button>
                         </div>
