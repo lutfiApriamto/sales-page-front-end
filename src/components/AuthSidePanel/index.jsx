@@ -1,4 +1,5 @@
 import { Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const AuthSidePanel = ({ title, description, steps }) => {
     return (
@@ -35,7 +36,9 @@ const AuthSidePanel = ({ title, description, steps }) => {
             {/* Brand */}
             <div className="flex items-center gap-2.5 relative z-10">
                 <div className="w-9 h-9 bg-white/15 rounded-xl flex items-center justify-center">
+                <Link to={'/'} >
                     <Sparkles className="text-white w-5 h-5" />
+                </Link>
                 </div>
                 <span className="text-xl font-bold tracking-tight text-white">
                     SalesGen<span className="text-indigo-300">.ai</span>
