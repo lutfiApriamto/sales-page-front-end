@@ -90,7 +90,9 @@ const RegisterPage = () => {
                     {/* Mobile brand */}
                     <div className="flex items-center justify-center gap-2 mb-8 lg:hidden">
                         <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-                            <Sparkles className="text-white w-4 h-4" />
+                            <Link to={'/'} >
+                                <Sparkles className="text-white w-5 h-5" />
+                            </Link>
                         </div>
                         <span className="text-lg font-bold text-slate-900">
                             SalesGen<span className="text-indigo-600">.ai</span>
