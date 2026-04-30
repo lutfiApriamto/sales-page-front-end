@@ -166,15 +166,9 @@ Frontend di-deploy di **Vercel**. Pastikan environment variable `VITE_API_BASE_U
 
 ---
 
-## 🤝 Kontribusi
-
-Project ini dibuat sebagai tugas seleksi / portofolio. Kontribusi tidak dibuka untuk saat ini.
-
----
-
 ## 👤 Author
 
-**Baginda Lutfi Apriamto**
+**Muhammad Lutfi Apriamto**
 - GitHub: [@lutfiApriamto](https://github.com/lutfiApriamto)
 
 ---
