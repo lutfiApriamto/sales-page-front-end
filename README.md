@@ -1,4 +1,4 @@
-# SalesGen.ai — Frontend [SalesGen.ai — Frontend](https://sales-page-front-end.vercel.app/)
+# [SalesGen.ai — Frontend](https://sales-page-front-end.vercel.app/)
 
 > AI-powered Sales Page Generator. Ubah informasi produk mentah menjadi halaman penjualan yang persuasif dalam hitungan detik.
 
