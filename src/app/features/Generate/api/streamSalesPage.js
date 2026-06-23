@@ -71,6 +71,15 @@ export async function streamSalesPage(payload, { token, signal, onChunk, onDone,
         else if (ev.error) onError(ev.error);
       }
     }
+    // Flush event terakhir yang mungkin tidak diakhiri "\n\n"
+    if (buffer.trim()) {
+      const { events } = parseSseBuffer(buffer + '\n\n');
+      for (const ev of events) {
+        if (ev.chunk) onChunk(ev.chunk);
+        else if (ev.done) onDone(ev);
+        else if (ev.error) onError(ev.error);
+      }
+    }
   } catch (err) {
     if (err.name === 'AbortError') return;
     onError('Koneksi streaming terputus.');

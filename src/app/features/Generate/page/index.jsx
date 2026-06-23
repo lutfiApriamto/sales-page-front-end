@@ -111,6 +111,7 @@ const GeneratePage = () => {
   const startThrottledRender = () => {
     if (throttleRef.current) clearInterval(throttleRef.current);
     throttleRef.current = setInterval(() => {
+      if (!accumulatedRef.current) return;
       setPreviewHtml(buildHtmlDocument(accumulatedRef.current, formData.product_name || 'Sales Page'));
     }, 300);
   };
@@ -191,7 +192,7 @@ const GeneratePage = () => {
   if (!hasEnoughCredit) {
     return (
       <ContentLayout title="Akses Ditangguhkan" description="Batas limit penggunaan AI Generator.">
-        <div className="max-w-2xl mx-auto mt-10 bg-white rounded-3xl border border-slate-200 shadow-sm p-10 text-center">
+        <div className="max-w-2xl mx-auto mt-10 bg-white rounded-3xl border border-slate-200 shadow-sm p-10 text-center animate-in zoom-in-95 duration-300">
           <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
             <Lock className="w-10 h-10 text-red-500" />
           </div>
