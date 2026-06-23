@@ -23,9 +23,15 @@ const ImageUploader = ({ label, type, value, onChange, disabled }) => {
     setUploading(true);
     try {
       const res = await uploadImage(file, type);
-      onChange(res.url);
-      toast.success('Gambar berhasil diunggah.');
-    } catch {
+      const url = res?.url;
+      if (typeof url === 'string' && /^https?:\/\//.test(url)) {
+        onChange(url);
+        toast.success('Gambar berhasil diunggah.');
+      } else {
+        toast.error('URL gambar tidak valid.');
+      }
+    } catch (error) {
+      console.error('Image upload failed:', error);
       toast.error('Gagal mengunggah gambar.');
     } finally {
       setUploading(false);
