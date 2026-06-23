@@ -4,3 +4,6 @@ export const generateSalesPage = async (data) => {
     const response = await axiosService.post('/sales-pages', data);
     return response.data;
 };
+
+export { uploadImage } from './uploadImage';
+export { streamSalesPage, parseSseBuffer } from './streamSalesPage';
