@@ -19,11 +19,11 @@ const LivePreviewPanel = ({ htmlContent, isStreaming, hasResult, onStop, onOpenD
           )}
         </div>
         <div className="flex items-center gap-1.5">
-          <button type="button" onClick={() => setViewMode('desktop')}
+          <button type="button" onClick={() => setViewMode('desktop')} title="Tampilan desktop" aria-label="Tampilan desktop"
             className={`p-1.5 rounded-lg ${viewMode === 'desktop' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400'}`}>
             <Monitor className="w-4 h-4" />
           </button>
-          <button type="button" onClick={() => setViewMode('mobile')}
+          <button type="button" onClick={() => setViewMode('mobile')} title="Tampilan mobile" aria-label="Tampilan mobile"
             className={`p-1.5 rounded-lg ${viewMode === 'mobile' ? 'bg-indigo-50 text-indigo-600' : 'text-slate-400'}`}>
             <Smartphone className="w-4 h-4" />
           </button>
